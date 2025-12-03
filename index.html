@@ -13,8 +13,7 @@
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-      import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getFirestore, doc, updateDoc, increment, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyALkLkbBr2SCxLyon970oyoBr2hmfFu0kE",
@@ -26,6 +25,9 @@
       };
 
       const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      window.db = db; 
+      window.firestoreFunctions = { doc, updateDoc, increment, setDoc, getDoc };
       console.log("Cryptinity Web4 Network: SECURE");
     </script>
 
@@ -50,10 +52,9 @@
             overflow-x: hidden;
         }
 
-        /* Typography */
         h1, h2, h3, .orbitron { font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
 
-        /* --- AUDIO START OVERLAY --- */
+        /* --- OVERLAYS --- */
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 10000;
@@ -73,75 +74,41 @@
             100% { box-shadow: 0 0 0 0 rgba(155, 243, 100, 0); }
         }
 
-        /* --- CINEMATIC INTRO --- */
         #intro-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 9999;
-            display: none; /* Hidden initially, shown by JS */
-            justify-content: center; align-items: center; flex-direction: column;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
             pointer-events: none;
         }
-        .intro-active {
-            display: flex !important;
-            animation: fadeOut 2s ease-in-out 3s forwards;
-        }
-        #intro-logo {
-            width: 250px; opacity: 0;
-            animation: logoReveal 2s ease-out 0.5s forwards;
-            filter: drop-shadow(0 0 30px var(--neon-green));
-        }
-        #intro-text {
-            margin-top: 20px; font-size: 2rem; color: var(--neon-teal);
-            letter-spacing: 5px; opacity: 0; font-family: 'Orbitron';
-            animation: textReveal 1s ease-out 1.5s forwards;
-        }
+        .intro-active { display: flex !important; animation: fadeOut 2s ease-in-out 3s forwards; }
+        #intro-logo { width: 250px; opacity: 0; animation: logoReveal 2s ease-out 0.5s forwards; filter: drop-shadow(0 0 30px var(--neon-green)); }
+        #intro-text { margin-top: 20px; font-size: 2rem; color: var(--neon-teal); letter-spacing: 5px; opacity: 0; font-family: 'Orbitron'; animation: textReveal 1s ease-out 1.5s forwards; }
         @keyframes logoReveal { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         @keyframes textReveal { 0% { letter-spacing: 15px; opacity: 0; } 100% { letter-spacing: 5px; opacity: 1; } }
         @keyframes fadeOut { 0% { opacity: 1; } 100% { opacity: 0; pointer-events: none; } }
 
-        /* --- MODAL (POP UP BOX) --- */
+        /* --- MODAL --- */
         .modal {
-            display: none; /* Hidden by default */
-            position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.9);
-            justify-content: center; align-items: center;
+            display: none; position: fixed; z-index: 10001; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.9); justify-content: center; align-items: center;
         }
         .modal-content {
             background: linear-gradient(135deg, #0d0d0d, #1a221b);
-            border: 2px solid var(--neon-green);
-            padding: 40px;
-            text-align: center;
-            width: 90%; max-width: 500px;
-            box-shadow: 0 0 50px rgba(155, 243, 100, 0.3);
-            border-radius: 10px;
-            animation: modalPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid var(--neon-green); padding: 40px; text-align: center;
+            width: 90%; max-width: 500px; box-shadow: 0 0 50px rgba(155, 243, 100, 0.3);
+            border-radius: 10px; animation: modalPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             position: relative;
         }
         @keyframes modalPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        
         .modal h2 { color: var(--neon-green); font-size: 1.8rem; margin-bottom: 20px; letter-spacing: 2px; }
         .modal p { color: #fff; font-size: 1.1rem; margin-bottom: 30px; font-family: 'Rajdhani'; }
-        
         .modal-btn {
-            background: transparent; border: 1px solid var(--neon-teal);
-            color: var(--neon-teal); padding: 10px 30px;
-            font-family: 'Orbitron'; font-size: 1rem; cursor: pointer;
-            transition: 0.3s;
+            background: transparent; border: 1px solid var(--neon-teal); color: var(--neon-teal);
+            padding: 10px 30px; font-family: 'Orbitron'; font-size: 1rem; cursor: pointer; transition: 0.3s;
         }
         .modal-btn:hover { background: var(--neon-teal); color: #000; box-shadow: 0 0 20px var(--neon-teal); }
 
-        /* --- WALLET SELECTOR STYLES --- */
-        .wallet-options { display: flex; flex-direction: column; gap: 15px; width: 100%; }
-        .wallet-option {
-            background: rgba(255,255,255,0.05); border: 1px solid #333;
-            padding: 15px; display: flex; align-items: center; justify-content: space-between;
-            cursor: pointer; transition: 0.3s; border-radius: 8px;
-        }
-        .wallet-option:hover { background: rgba(78, 213, 210, 0.1); border-color: var(--neon-teal); }
-        .wallet-icon { font-size: 1.5rem; color: #fff; }
-        .wallet-name { font-family: 'Orbitron'; font-size: 1rem; color: #fff; }
-
-        /* --- HEADER & LOGIN --- */
+        /* --- HEADER --- */
         header {
             position: fixed; top: 0; width: 100%; padding: 10px 20px;
             background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(10px);
@@ -151,36 +118,24 @@
         }
         .brand { display: flex; align-items: center; gap: 10px; }
         .brand img { height: 50px; filter: drop-shadow(0 0 5px var(--neon-green)); }
-        .brand h1 {
-            font-size: 1.2rem;
-            background: linear-gradient(90deg, var(--neon-green), var(--neon-teal));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
-        
-        /* LOGIN AREA STYLES */
+        .brand h1 { font-size: 1.2rem; background: linear-gradient(90deg, var(--neon-green), var(--neon-teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .login-wrapper { display: flex; align-items: center; gap: 15px; }
-
         .uid-badge {
             font-family: 'Orbitron'; font-size: 0.85rem; color: var(--neon-green);
             background: rgba(14, 96, 17, 0.3); border: 1px solid var(--neon-green);
-            padding: 5px 10px; border-radius: 4px; letter-spacing: 1px;
-            display: none; box-shadow: 0 0 10px rgba(155, 243, 100, 0.2);
+            padding: 5px 10px; border-radius: 4px; display: none; box-shadow: 0 0 10px rgba(155, 243, 100, 0.2);
         }
-
         .connect-container { position: relative; display: flex; align-items: center; }
-
         .blockchain-light {
             width: 10px; height: 10px; background-color: var(--neon-green); border-radius: 50%;
-            margin-right: 10px; box-shadow: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green), 0 0 40px var(--neon-green);
+            margin-right: 10px; box-shadow: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green);
             display: none; animation: pulseLight 1.5s infinite alternate;
         }
         @keyframes pulseLight { 0% { opacity: 0.6; box-shadow: 0 0 5px var(--neon-green); } 100% { opacity: 1; box-shadow: 0 0 15px var(--neon-green), 0 0 25px var(--neon-green); } }
-
         .connect-btn {
             background: transparent; border: 2px solid var(--neon-teal); color: var(--neon-teal);
             padding: 8px 20px; font-family: 'Orbitron'; font-weight: bold; font-size: 0.8rem;
-            cursor: pointer; transition: 0.3s;
-            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            cursor: pointer; transition: 0.3s; clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
         }
         .connect-btn:hover { background: var(--neon-teal); color: var(--bg-dark); box-shadow: 0 0 20px var(--neon-teal); }
 
@@ -202,44 +157,27 @@
         .stat-value { font-family: 'Orbitron'; font-size: 1.8rem; color: var(--neon-green); display: block; }
         .stat-label { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; }
 
-        /* --- NEW HYBRID REFERRAL SECTION --- */
-        .referral-container {
-            width: 90%; max-width: 900px; margin: 30px auto;
-            position: relative;
-        }
-
-        /* State 1: Locked */
+        /* --- HYBRID REFERRAL SECTION --- */
+        .referral-container { width: 90%; max-width: 900px; margin: 30px auto; position: relative; }
+        
         .ref-locked {
             border: 1px solid #333; background: rgba(13, 13, 13, 0.9);
-            padding: 30px; text-align: center; border-radius: 10px;
-            border-bottom: 2px solid var(--neon-teal);
+            padding: 30px; text-align: center; border-radius: 10px; border-bottom: 2px solid var(--neon-teal);
         }
         .ref-locked i { font-size: 2rem; color: #555; margin-bottom: 10px; }
         
-        /* State 2: Hybrid Unlocked */
         .hybrid-panel {
-            display: none; /* Hidden by default */
-            background: rgba(20, 25, 22, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(155, 243, 100, 0.3);
-            border-left: 4px solid var(--neon-green);
-            padding: 30px;
-            position: relative;
-            animation: panelFade 0.8s ease-out;
+            display: none; background: rgba(20, 25, 22, 0.6); backdrop-filter: blur(10px);
+            border: 1px solid rgba(155, 243, 100, 0.3); border-left: 4px solid var(--neon-green);
+            padding: 30px; position: relative; animation: panelFade 0.8s ease-out;
             clip-path: polygon(0 0, 100% 0, 100% 85%, 95% 100%, 0 100%);
         }
         @keyframes panelFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .hybrid-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
         .hybrid-title { font-family: 'Orbitron'; color: #fff; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
         .hybrid-badge { background: var(--neon-teal); color: #000; font-size: 0.7rem; padding: 2px 8px; font-weight: bold; border-radius: 2px; }
-
         .hybrid-body { display: flex; flex-direction: column; gap: 15px; }
-        
-        .hybrid-link-box {
-            display: flex; background: #000; border: 1px solid #333;
-            padding: 0; align-items: center;
-        }
+        .hybrid-link-box { display: flex; background: #000; border: 1px solid #333; padding: 0; align-items: center; }
         .link-text {
             flex: 1; color: var(--neon-teal); font-family: 'Rajdhani'; font-size: 1rem;
             padding: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -250,19 +188,14 @@
             padding: 15px 25px; transition: 0.3s; font-size: 0.9rem;
         }
         .hybrid-copy-btn:hover { background: var(--neon-green); color: #000; }
-
-        .hybrid-footer {
-            margin-top: 15px; display: flex; gap: 15px; font-size: 0.8rem; color: #888;
-        }
+        .hybrid-footer { margin-top: 15px; display: flex; gap: 15px; font-size: 0.8rem; color: #888; }
         .h-stat { color: var(--neon-green); font-weight: bold; }
 
-        /* --- MINING PLACEHOLDER (LOCKED) --- */
+        /* --- MINING SECTIONS --- */
         .mining-locked {
-            border: 1px solid #333;
-            background: rgba(13, 13, 13, 0.8);
+            border: 1px solid #333; background: rgba(13, 13, 13, 0.8);
             padding: 40px; margin: 20px auto; width: 95%; max-width: 1200px;
-            border-radius: 20px; text-align: center;
-            border-left: 3px solid var(--neon-teal);
+            border-radius: 20px; text-align: center; border-left: 3px solid var(--neon-teal);
         }
         .mining-locked h3 { color: var(--text-muted); font-size: 1.2rem; margin-bottom: 10px; }
         .mining-locked .lock-msg {
@@ -271,7 +204,6 @@
         }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        /* --- MINING ACTIVE (INITIALLY HIDDEN) --- */
         .mining-section {
             background: linear-gradient(180deg, var(--bg-dark) 0%, var(--dark-green) 100%);
             padding: 30px; margin: 20px auto; width: 95%; max-width: 1200px;
@@ -281,37 +213,23 @@
         }
         .mining-section.visible { display: block; opacity: 1; animation: slideDown 1s ease-out; }
         @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
         .mining-section::before {
             content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
             background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(78, 213, 210, 0.05) 2px, rgba(78, 213, 210, 0.05) 4px);
             animation: scanline 10s linear infinite; pointer-events: none;
         }
         @keyframes scanline { from { transform: translateY(0); } to { transform: translateY(50px); } }
+        .mining-display { display: flex; justify-content: center; align-items: center; gap: 15px; margin: 20px 0; }
         
-        .mining-display {
-            display: flex; justify-content: center; align-items: center; gap: 15px;
-            margin: 20px 0;
-        }
-
+        /* --- WITHDRAWAL & OTHERS --- */
         .countdown-timer { display: flex; justify-content: center; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
-        .time-box {
-            background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px;
-            border: 1px solid var(--neon-teal); min-width: 70px; text-align: center;
-        }
+        .time-box { background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; border: 1px solid var(--neon-teal); min-width: 70px; text-align: center; }
         .time-val { font-size: 1.5rem; color: var(--neon-teal); font-weight: bold; font-family: 'Orbitron'; }
         .time-lbl { font-size: 0.7rem; color: #fff; margin-top: 5px; }
 
-        /* --- WITHDRAWAL BOX --- */
         .withdrawal-box {
-            margin-top: 40px;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid var(--neon-green);
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
+            margin-top: 40px; background: rgba(0,0,0,0.6); border: 1px solid var(--neon-green);
+            padding: 20px; border-radius: 10px; max-width: 500px; margin-left: auto; margin-right: auto;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         .w-input-group { margin-bottom: 15px; text-align: left; }
@@ -328,41 +246,24 @@
         }
         .w-btn:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 20px var(--neon-green); }
 
-        /* --- CHART --- */
         .charts-section { padding: 0 20px; height: 500px; width: 100%; max-width: 1400px; margin: 20px auto; }
-
-        /* --- ECOSYSTEM --- */
-        .ecosystem-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px; padding: 30px 20px; max-width: 1200px; margin: 0 auto;
-        }
+        .ecosystem-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; padding: 30px 20px; max-width: 1200px; margin: 0 auto; }
         .eco-card {
             background: var(--bg-panel); padding: 25px; border-radius: 15px; border: 1px solid #333;
             transition: 0.3s; position: relative; overflow: hidden; text-align: center;
         }
         .eco-card:hover { transform: translateY(-5px); border-color: var(--neon-green); box-shadow: 0 0 20px rgba(155, 243, 100, 0.2); }
         .eco-icon { font-size: 2rem; color: var(--neon-teal); margin-bottom: 10px; }
-        .coming-soon {
-            position: absolute; top: 10px; right: -30px; background: var(--neon-green);
-            color: #000; padding: 3px 30px; transform: rotate(45deg); font-size: 0.6rem; font-weight: bold;
-        }
+        .coming-soon { position: absolute; top: 10px; right: -30px; background: var(--neon-green); color: #000; padding: 3px 30px; transform: rotate(45deg); font-size: 0.6rem; font-weight: bold; }
 
-        /* --- WHITEPAPER --- */
-        .whitepaper-container {
-            width: 90%; max-width: 1000px; margin: 30px auto; background: rgba(0,0,0,0.8);
-            border: 1px solid var(--neon-teal); padding: 30px; border-radius: 10px;
-            box-shadow: 0 0 30px rgba(78, 213, 210, 0.1);
-        }
+        .whitepaper-container { width: 90%; max-width: 1000px; margin: 30px auto; background: rgba(0,0,0,0.8); border: 1px solid var(--neon-teal); padding: 30px; border-radius: 10px; box-shadow: 0 0 30px rgba(78, 213, 210, 0.1); }
         .wp-content { height: 300px; overflow-y: auto; padding-right: 15px; font-size: 1rem; line-height: 1.6; color: #d1d1d1; text-align: left; }
         .wp-content h2 { color: var(--neon-green); margin-top: 15px; margin-bottom: 5px; border-bottom: 1px solid #333; font-size: 1.2rem; }
 
-        /* --- FLOAT BUTTONS (CHAT & AUDIO) --- */
         .ai-float-btn {
             position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
-            background: var(--neon-green); border-radius: 50%; display: flex;
-            justify-content: center; align-items: center; cursor: pointer;
-            box-shadow: 0 0 20px var(--neon-green); z-index: 1000;
-            transition: 0.3s; animation: pulse 2s infinite;
+            background: var(--neon-green); border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer;
+            box-shadow: 0 0 20px var(--neon-green); z-index: 1000; transition: 0.3s; animation: pulse 2s infinite;
         }
         .ai-float-btn:hover { transform: scale(1.1); }
         .ai-float-btn i { font-size: 1.5rem; color: #000; }
@@ -370,20 +271,16 @@
         .audio-btn {
             position: fixed; bottom: 30px; left: 30px; width: 50px; height: 50px;
             background: rgba(13, 13, 13, 0.9); border: 1px solid var(--neon-teal);
-            border-radius: 50%; display: none; /* Hidden until entered */
-            justify-content: center; align-items: center; cursor: pointer;
-            z-index: 1000; transition: 0.3s;
-            box-shadow: 0 0 10px var(--neon-teal);
+            border-radius: 50%; display: none; justify-content: center; align-items: center; cursor: pointer;
+            z-index: 1000; transition: 0.3s; box-shadow: 0 0 10px var(--neon-teal);
         }
         .audio-btn:hover { transform: scale(1.1); background: var(--neon-teal); }
         .audio-btn:hover i { color: #000; }
         .audio-btn i { color: var(--neon-teal); font-size: 1.2rem; transition: 0.3s; }
-        
+
         .chat-window {
             position: fixed; bottom: 100px; right: 30px; width: 320px; height: 450px;
-            background: rgba(13, 13, 13, 0.95); border: 1px solid var(--neon-green);
-            border-radius: 15px; display: none; flex-direction: column; z-index: 1000;
-            backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            background: rgba(13, 13, 13, 0.95); border: 1px solid var(--neon-green); border-radius: 15px; display: none; flex-direction: column; z-index: 1000; backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,0,0,0.8);
         }
         .chat-header { background: var(--dark-green); padding: 15px; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--neon-green); }
         .chat-body { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
@@ -393,15 +290,12 @@
         .msg { max-width: 80%; padding: 10px; border-radius: 10px; font-size: 0.9rem; }
         .msg.bot { background: rgba(155, 243, 100, 0.1); border: 1px solid var(--neon-green); align-self: flex-start; color: #fff; }
         .msg.user { background: rgba(78, 213, 210, 0.2); border: 1px solid var(--neon-teal); align-self: flex-end; color: #fff; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(155, 243, 100, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(155, 243, 100, 0); } 100% { box-shadow: 0 0 0 0 rgba(155, 243, 100, 0); } }
 
-        /* --- FOOTER --- */
         footer { background: #000; padding: 40px; text-align: center; border-top: 1px solid var(--dark-green); margin-top: 50px; }
         .social-links { margin-bottom: 20px; }
         .social-links a { color: var(--neon-teal); font-size: 1.8rem; margin: 0 15px; transition: 0.3s; display: inline-block; }
         .social-links a:hover { color: var(--neon-green); text-shadow: 0 0 15px var(--neon-green); transform: translateY(-3px); }
 
-        /* --- MOBILE RESPONSIVE --- */
         @media (max-width: 768px) {
             .brand h1 { font-size: 1rem; }
             .hero h2 { font-size: 1.8rem; }
@@ -440,28 +334,11 @@
         <div id="intro-text">WELCOME TO SAFE ZONE</div>
     </div>
 
-    <div id="wallet-modal" class="modal">
-        <div class="modal-content">
-            <h2 style="font-size: 1.4rem;">SELECT CONNECTION</h2>
-            <div class="wallet-options">
-                <div class="wallet-option" onclick="connectMetamask()">
-                    <span class="wallet-name">METAMASK (EVM)</span>
-                    <i class="fas fa-cube wallet-icon" style="color: #f6851b;"></i>
-                </div>
-                <div class="wallet-option" onclick="connectPhantom()">
-                    <span class="wallet-name">PHANTOM (SOLANA)</span>
-                    <i class="fas fa-ghost wallet-icon" style="color: #ab9ff2;"></i>
-                </div>
-            </div>
-            <button class="modal-btn" style="margin-top: 20px; border-color: #555; color: #888;" onclick="closeWalletModal()">CANCEL</button>
-        </div>
-    </div>
-
     <div id="welcome-modal" class="modal">
         <div class="modal-content">
-            <h2>WELCOME NEW WEB4 CITIZEN</h2>
-            <p>Wallet Verified. Protocol Access Granted.</p>
-            <button class="modal-btn" onclick="closeWelcomeModal()">ENTER SAFE ZONE</button>
+            <h2 id="modal-title">WELCOME NEW WEB4 CITIZEN</h2>
+            <p id="modal-msg">Identity Verified. Protocol Access Granted.</p>
+            <button class="modal-btn" onclick="closeModal()">ENTER SAFE ZONE</button>
         </div>
     </div>
 
@@ -472,10 +349,9 @@
         </div>
         <div class="login-wrapper">
             <div id="user-uid" class="uid-badge"></div>
-            
             <div class="connect-container">
                 <div id="status-light" class="blockchain-light"></div>
-                <button class="connect-btn" onclick="openWalletModal()">CONNECT WALLET</button>
+                <button id="connect-btn" class="connect-btn" onclick="connectWallet()">CONNECT WALLET</button>
             </div>
         </div>
     </header>
@@ -484,50 +360,34 @@
         <h2>THE FIRST SOCIAL FINANCE PLATFORM</h2>
         <p>Social. Finance. Vault. Security.</p>
         <div class="stats-container">
-            <div class="stat-box">
-                <span class="stat-value" id="active-members">68,923,021</span>
-                <span class="stat-label">Active Members (Live)</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-value" id="cty-price">$0.00</span>
-                <span class="stat-label">CTY Live Price (Pre-Launch)</span>
-            </div>
+            <div class="stat-box"><span class="stat-value" id="active-members">68,923,021</span><span class="stat-label">Active Members (Live)</span></div>
+            <div class="stat-box"><span class="stat-value" id="cty-price">$0.00</span><span class="stat-label">CTY Live Price (Pre-Launch)</span></div>
         </div>
     </section>
 
     <section class="referral-container">
-        
         <div id="ref-locked" class="ref-locked">
             <i class="fas fa-lock"></i>
             <h3 class="orbitron" style="color: #666; margin-bottom: 5px;">SYSTEM ENCRYPTED</h3>
             <p style="color: #444; font-size: 0.9rem;">CONNECT WALLET TO GENERATE REFERRAL LINK</p>
         </div>
-
         <div id="ref-unlocked" class="hybrid-panel">
             <div class="hybrid-header">
-                <div class="hybrid-title">
-                    <i class="fas fa-network-wired" style="color: var(--neon-teal);"></i> 
-                    INVITE PROTOCOL
-                    <span class="hybrid-badge">ACTIVE</span>
-                </div>
+                <div class="hybrid-title"><i class="fas fa-network-wired" style="color: var(--neon-teal);"></i> INVITE PROTOCOL <span class="hybrid-badge">ACTIVE</span></div>
                 <div style="font-family: 'Rajdhani'; color: #888;">REWARD: <span style="color: var(--neon-green);">5 CTY</span> / INVITE</div>
             </div>
-
             <div class="hybrid-body">
                 <div class="hybrid-link-box">
-                    <div class="link-text" id="ref-link-text">https://Sci-fi-Cryptinity-Web4.io/invites/u-8921...</div>
-                    <button class="hybrid-copy-btn" onclick="copyReferral()">
-                        <i class="fas fa-copy"></i> COPY PROTOCOL
-                    </button>
+                    <div class="link-text" id="ref-link-text">Waiting for generation...</div>
+                    <button class="hybrid-copy-btn" onclick="copyReferral()"><i class="fas fa-copy"></i> COPY PROTOCOL</button>
                 </div>
                 <div class="hybrid-footer">
-                    <span><i class="fas fa-users"></i> INVITES: <span class="h-stat">0</span></span>
-                    <span><i class="fas fa-coins"></i> EARNED: <span class="h-stat">0.00 CTY</span></span>
+                    <span><i class="fas fa-users"></i> INVITES: <span class="h-stat" id="ref-count">0</span></span>
+                    <span><i class="fas fa-coins"></i> EARNED: <span class="h-stat" id="ref-earned">0.00 CTY</span></span>
                 </div>
             </div>
             <p id="ref-msg" style="color: var(--neon-green); text-align: center; margin-top: 10px; opacity: 0; transition: 0.3s; font-size: 0.8rem;">PROTOCOL COPIED TO CLIPBOARD</p>
         </div>
-
     </section>
 
     <div id="mining-placeholder" class="mining-locked">
@@ -539,24 +399,13 @@
         <h3 class="orbitron" style="font-size: 1.5rem; margin-bottom: 10px;">FREE CLOUD MINING <i class="fas fa-server"></i></h3>
         <div style="text-align: center;">
             <p style="color: #ccc; font-size: 0.9rem;">Mining Speed: <span style="color: var(--neon-green);">145 TH/s</span> | Status: <span style="color: var(--neon-teal);">ONLINE</span></p>
-            
-            <div class="mining-display">
-                <span id="mined-value" style="font-size: 3rem; font-family: 'Orbitron'; text-shadow: 0 0 20px var(--neon-green);">0.00000000</span>
-            </div>
-
+            <div class="mining-display"><span id="mined-value" style="font-size: 3rem; font-family: 'Orbitron'; text-shadow: 0 0 20px var(--neon-green);">0.00000000</span></div>
             <p style="font-size: 0.9rem; color: #aaa;">TRADING LAUNCH IN:</p>
             <div class="countdown-timer" id="countdown"></div>
-            
             <div class="withdrawal-box">
                 <h4 class="orbitron" style="color: var(--neon-green); margin-bottom: 20px;">WITHDRAW CTY</h4>
-                <div class="w-input-group">
-                    <label class="w-label">RECEIVING WALLET</label>
-                    <input type="text" class="w-input" placeholder="Ex. 0x8935....">
-                </div>
-                <div class="w-input-group">
-                    <label class="w-label">AMOUNT (CTY)</label>
-                    <input type="number" class="w-input" placeholder="Ex. Minimum withdrawal 50 CTY">
-                </div>
+                <div class="w-input-group"><label class="w-label">RECEIVING WALLET</label><input type="text" class="w-input" placeholder="Ex. 0x8935...."></div>
+                <div class="w-input-group"><label class="w-label">AMOUNT (CTY)</label><input type="number" class="w-input" placeholder="Ex. Minimum withdrawal 50 CTY"></div>
                 <button class="w-btn" onclick="processWithdrawal()">INITIATE TRANSFER</button>
             </div>
         </div>
@@ -566,21 +415,7 @@
         <div class="tradingview-widget-container" style="height:100%;width:100%">
             <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
             <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-            {
-            "autosize": true,
-            "symbol": "BINANCE:SOLUSDT",
-            "interval": "1",
-            "timezone": "Etc/UTC",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "enable_publishing": false,
-            "backgroundColor": "rgba(13, 13, 13, 1)",
-            "gridColor": "rgba(30, 37, 31, 1)",
-            "allow_symbol_change": true,
-            "calendar": false,
-            "support_host": "https://www.tradingview.com"
-            }
+            {"autosize": true,"symbol": "BINANCE:SOLUSDT","interval": "1","timezone": "Etc/UTC","theme": "dark","style": "1","locale": "en","enable_publishing": false,"backgroundColor": "rgba(13, 13, 13, 1)","gridColor": "rgba(30, 37, 31, 1)","allow_symbol_change": true,"calendar": false,"support_host": "https://www.tradingview.com"}
             </script>
         </div>
     </section>
@@ -595,35 +430,17 @@
     <section class="whitepaper-container">
         <h2 style="text-align: center; margin-bottom: 20px;">OFFICIAL WHITE PAPER v1.0</h2>
         <div class="wp-content">
-            <h2>1. ABSTRACT</h2>
-            <p><strong>Welcome to the Safe Zone.</strong> The internet is broken. Web2 sold your data; Web3 was too complex. <strong>Cryptinity Web4</strong> is the next evolution—a "Sci-Fi Hybrid" ecosystem that unifies Social Interaction, High-Speed Finance, Digital Vaults, and Military-Grade Security into a single mobile application.</p>
-            <h2>2. THE PROBLEM</h2>
-            <p>The current digital landscape is fragmented and hostile. Social Manipulation, Financial Friction, and Security Failures plague users daily.</p>
-            <h2>3. THE SOLUTION: THE 4 PILLARS</h2>
-            <p><strong>Pillar I: SOCIAL (Zero-Algorithm)</strong> - No Manipulation. Organic Reach.<br>
-            <strong>Pillar II: FINANCE</strong> - Faster Than Light transaction speeds using Solana PoH.<br>
-            <strong>Pillar III: THE VAULT</strong> - Self-Custody Neo-Bank with zero hidden fees.<br>
-            <strong>Pillar IV: SECURITY</strong> - Imunify 360 Integration and Web4 Hybrid Architecture.</p>
-            <h2>4. THE TOKEN: CTY</h2>
-            <p><strong>Ticker:</strong> CTY<br><strong>Network:</strong> Solana (SPL Token-2022)<br><strong>Supply:</strong> 1,000,000,000</p>
-            <h2>6. CONCLUSION</h2>
-            <p>The era of slow banking and manipulated social feeds is over. <strong>Welcome to the Safe Zone.</strong></p>
+            <h2>1. ABSTRACT</h2><p><strong>Welcome to the Safe Zone.</strong> The internet is broken. Web2 sold your data; Web3 was too complex. <strong>Cryptinity Web4</strong> is the next evolution.</p>
+            <h2>2. THE PROBLEM</h2><p>The current digital landscape is fragmented and hostile.</p>
+            <h2>4. THE TOKEN: CTY</h2><p><strong>Ticker:</strong> CTY<br><strong>Network:</strong> Solana (SPL Token-2022)</p>
         </div>
     </section>
 
     <div class="ai-float-btn" onclick="toggleChat()"><i class="fas fa-robot"></i></div>
     <div class="chat-window" id="chat-window">
-        <div class="chat-header">
-            <span class="orbitron" style="color: var(--neon-teal);">CRYPTINITY AI</span>
-            <i class="fas fa-times" style="cursor: pointer;" onclick="toggleChat()"></i>
-        </div>
-        <div class="chat-body" id="chat-body">
-            <div class="msg bot">Greetings, Commander. I am the Sentinel AI. How can I assist you with Cryptinity Web4 today?</div>
-        </div>
-        <div class="chat-input-area">
-            <input type="text" id="chat-input" class="chat-input" placeholder="Ask about CTY, Mining..." onkeypress="handleEnter(event)">
-            <button class="chat-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
-        </div>
+        <div class="chat-header"><span class="orbitron" style="color: var(--neon-teal);">CRYPTINITY AI</span><i class="fas fa-times" style="cursor: pointer;" onclick="toggleChat()"></i></div>
+        <div class="chat-body" id="chat-body"><div class="msg bot">Greetings, Commander. I am the Sentinel AI. How can I assist you?</div></div>
+        <div class="chat-input-area"><input type="text" id="chat-input" class="chat-input" placeholder="Ask about CTY..." onkeypress="handleEnter(event)"><button class="chat-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button></div>
     </div>
 
     <footer>
@@ -631,85 +448,96 @@
             <a href="https://x.com/@cryptinity85164" target="_blank"><i class="fab fa-twitter"></i></a>
             <a href="https://t.me/ctyweb4" target="_blank"><i class="fab fa-telegram"></i></a>
             <a href="https://discord.gg/Wu43MFM9w" target="_blank"><i class="fab fa-discord"></i></a>
-            <a href="https://facebook.com/cryptinity" target="_blank"><i class="fab fa-facebook"></i></a>
-            <a href="https://youtube.com/@cryptinity" target="_blank"><i class="fab fa-youtube"></i></a>
         </div>
         <p style="margin-top: 20px; color: #555;">&copy; 2025 Cryptinity Web4. All rights reserved.</p>
     </footer>
 
     <script>
-        // --- 0. ENTER SYSTEM ---
+        // --- 0. STARTUP LOGIC: CAPTURE REFERRAL & DETECT WALLET ---
+        let detectedWalletType = null; // 'solana' or 'ethereum' or null
+
+        window.onload = function() {
+            // Check for ?ref= in the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const refID = urlParams.get('ref');
+            
+            if (refID) {
+                console.log("Referred by:", refID);
+                localStorage.setItem('cty_referrer', refID);
+            }
+
+            // --- AUTO DETECT WALLET INSTALLED ---
+            setTimeout(() => {
+                const btn = document.getElementById('connect-btn');
+                
+                // Check Solana (Phantom)
+                if (window.solana && window.solana.isPhantom) {
+                    detectedWalletType = 'solana';
+                    console.log("System: Phantom Wallet Detected");
+                    btn.innerText = "PHANTOM DETECTED";
+                    btn.style.borderColor = "var(--neon-teal)";
+                } 
+                // Check Ethereum (MetaMask)
+                else if (window.ethereum) {
+                    detectedWalletType = 'ethereum';
+                    console.log("System: MetaMask Detected");
+                    btn.innerText = "METAMASK DETECTED";
+                    btn.style.borderColor = "orange";
+                    btn.style.color = "orange";
+                }
+                else {
+                    console.log("System: No Wallet Detected (Using Simulation Mode)");
+                }
+            }, 1000);
+        };
+
+        // --- 1. ENTER SYSTEM ---
         function enterSite() {
-            // Hide Start Overlay
             document.getElementById('start-overlay').style.display = 'none';
-            // Show Cinematic Intro
             const intro = document.getElementById('intro-overlay');
             intro.classList.add('intro-active');
             
-            // Play Audio
             const audio = document.getElementById('theme-song');
-            audio.volume = 0.6; // 60% Volume
+            audio.volume = 0.6; 
             audio.play().then(() => {
-                // Show Audio Control Button (Bottom Left)
                 document.getElementById('audio-control').style.display = 'flex';
-                console.log("Audio System: ONLINE");
-            }).catch(e => {
-                console.log("Audio blocked by browser.");
-            });
+            }).catch(e => console.log("Audio blocked"));
         }
 
-        // --- NEW: TOGGLE MUTE FUNCTION ---
+        // --- 2. AUDIO TOGGLE ---
         function toggleMute() {
             const audio = document.getElementById('theme-song');
             const icon = document.getElementById('audio-icon');
             const btn = document.getElementById('audio-control');
-
             if (audio.muted) {
-                audio.muted = false;
-                // Change Icon to Volume UP
-                icon.classList.remove('fa-volume-mute');
-                icon.classList.add('fa-volume-up');
-                // Restore Glow
-                btn.style.borderColor = 'var(--neon-teal)';
-                btn.style.boxShadow = '0 0 10px var(--neon-teal)';
+                audio.muted = false; icon.classList.remove('fa-volume-mute'); icon.classList.add('fa-volume-up');
+                btn.style.borderColor = 'var(--neon-teal)'; btn.style.boxShadow = '0 0 10px var(--neon-teal)';
             } else {
-                audio.muted = true;
-                // Change Icon to Mute
-                icon.classList.remove('fa-volume-up');
-                icon.classList.add('fa-volume-mute');
-                // Dim Button
-                btn.style.borderColor = '#555';
-                btn.style.boxShadow = 'none';
+                audio.muted = true; icon.classList.remove('fa-volume-up'); icon.classList.add('fa-volume-mute');
+                btn.style.borderColor = '#555'; btn.style.boxShadow = 'none';
             }
         }
 
-        // --- 1. PERSISTENT MEMBERS ---
+        // --- 3. PERSISTENT MEMBERS ---
         const memberEl = document.getElementById('active-members');
         let currentMembers = parseInt(localStorage.getItem('cty_members')) || 68923021;
-        
         function updateMembers() {
-            const change = Math.floor(Math.random() * 5); // Always grows 0-5
-            currentMembers += change;
+            currentMembers += Math.floor(Math.random() * 5);
             localStorage.setItem('cty_members', currentMembers);
             memberEl.innerText = currentMembers.toLocaleString();
         }
         setInterval(updateMembers, 3000);
         memberEl.innerText = currentMembers.toLocaleString();
 
-        // --- 2. PERSISTENT & OFFLINE MINING ---
+        // --- 4. MINING LOGIC ---
         const minedEl = document.getElementById('mined-value');
         let minedAmount = parseFloat(localStorage.getItem('cty_mined')) || 0.00000000;
         let lastTime = parseInt(localStorage.getItem('cty_last_time')) || Date.now();
-        const miningRatePerMs = 0.00000145 / 100; // Rate based on previous interval
-
-        // Calculate offline earnings
-        const nowTime = Date.now();
-        const diffTime = nowTime - lastTime;
-        if(diffTime > 0) {
-            const offlineEarnings = diffTime * miningRatePerMs;
-            minedAmount += offlineEarnings;
-            console.log("Welcome back Commander. You mined " + offlineEarnings.toFixed(8) + " CTY while away.");
-        }
+        const miningRatePerMs = 0.00000145 / 100;
+        
+        // Sync offline mining
+        const diffTime = Date.now() - lastTime;
+        if(diffTime > 0) minedAmount += diffTime * miningRatePerMs;
 
         function mineLoop() {
             minedAmount += 0.00000145;
@@ -719,208 +547,155 @@
         }
         setInterval(mineLoop, 100);
 
-        // --- 3. PERSISTENT COUNTDOWN ---
-        let launchDate = localStorage.getItem('cty_launch_date');
-        if (!launchDate) {
-            // Set 90 days from FIRST visit
-            const target = new Date();
-            target.setDate(target.getDate() + 90);
-            launchDate = target.getTime();
-            localStorage.setItem('cty_launch_date', launchDate);
-        }
+        // --- 5. CONNECT WALLET (REAL + FALLBACK) ---
+        async function connectWallet() {
+            const btn = document.getElementById('connect-btn');
+            if(btn.innerText.includes("...")) return;
 
-        function updateCountdown() {
-            const now = new Date().getTime();
-            const distance = launchDate - now;
+            btn.innerText = "INITIALIZING...";
+            
+            let walletAddress = "0x89...2B4"; // Default fake address for fallback
+            let isRealConnection = false;
 
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            document.getElementById("countdown").innerHTML = `
-                <div class="time-box"><div class="time-val">${days}</div><div class="time-lbl">DAYS</div></div>
-                <div class="time-box"><div class="time-val">${hours}</div><div class="time-lbl">HRS</div></div>
-                <div class="time-box"><div class="time-val">${minutes}</div><div class="time-lbl">MIN</div></div>
-                <div class="time-box"><div class="time-val">${seconds}</div><div class="time-lbl">SEC</div></div>
-            `;
-        }
-        setInterval(updateCountdown, 1000);
-
-        // --- 4. REAL WALLET CONNECTION LOGIC ---
-        
-        // Open Modal
-        function openWalletModal() {
-            const btn = document.querySelector('.connect-btn');
-            // If already connected, do nothing
-            if(btn.innerText.includes("0x") || btn.innerText.includes("...")) return;
-            document.getElementById('wallet-modal').style.display = 'flex';
-        }
-
-        function closeWalletModal() {
-            document.getElementById('wallet-modal').style.display = 'none';
-        }
-
-        function closeWelcomeModal() {
-            document.getElementById('welcome-modal').style.display = 'none';
-        }
-
-        // METAMASK CONNECTION
-        async function connectMetamask() {
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    const account = accounts[0];
-                    handleConnectionSuccess(account);
-                } catch (error) {
-                    alert("Connection Cancelled: " + error.message);
-                }
-            } else {
-                alert("Metamask is not installed! Please install it from metamask.io");
-                window.open("https://metamask.io/download/", "_blank");
-            }
-        }
-
-        // PHANTOM CONNECTION
-        async function connectPhantom() {
-            if (window.solana && window.solana.isPhantom) {
-                try {
+            // --- TRY REAL CONNECTION IF DETECTED ---
+            try {
+                if (detectedWalletType === 'solana') {
+                    // Connect Phantom
                     const resp = await window.solana.connect();
-                    const pubKey = resp.publicKey.toString();
-                    handleConnectionSuccess(pubKey);
-                } catch (err) {
-                    alert("User rejected the request.");
+                    walletAddress = resp.publicKey.toString().substring(0, 6) + "..." + resp.publicKey.toString().slice(-4);
+                    isRealConnection = true;
+                } 
+                else if (detectedWalletType === 'ethereum') {
+                    // Connect MetaMask
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const addr = accounts[0];
+                    walletAddress = addr.substring(0, 6) + "..." + addr.slice(-4);
+                    isRealConnection = true;
                 }
-            } else {
-                alert("Phantom Wallet not found! Please install it.");
-                window.open("https://phantom.app/", "_blank");
+            } catch (err) {
+                console.log("Wallet connection denied or failed. Falling back to Sim.");
+                // User rejected request, fallback to simulation so they aren't stuck
             }
+
+            // --- PROCEED WITH UI UNLOCK (SIMULATED DELAY FOR EFFECT) ---
+            setTimeout(async () => {
+                // UI Changes
+                btn.innerText = walletAddress;
+                btn.style.borderColor = "#9bf364"; 
+                btn.style.color = "#9bf364";
+                document.getElementById('status-light').style.display = 'block';
+                
+                // Generate/Get UID
+                let uid = localStorage.getItem('web4_uid');
+                if(!uid) {
+                    const p1 = Math.floor(100 + Math.random() * 900);
+                    const p2 = Math.floor(100 + Math.random() * 900);
+                    uid = `WEB4-${p1}-${p2}`;
+                    localStorage.setItem('web4_uid', uid);
+                }
+                document.getElementById('user-uid').innerText = uid;
+                document.getElementById('user-uid').style.display = 'block';
+
+                // UNLOCK AREAS
+                document.getElementById('mining-placeholder').style.display = 'none';
+                document.getElementById('mining-area').classList.add('visible');
+                document.getElementById('ref-locked').style.display = 'none';
+                document.getElementById('ref-unlocked').style.display = 'block';
+                
+                // --- NEW URL WITH GITHUB DOMAIN ---
+                const baseUrl = "https://cryptinity.github.io/Sci-fi-Cryptinity-Web4/";
+                document.getElementById('ref-link-text').innerText = `${baseUrl}?ref=${uid}`;
+
+                // --- REAL FIREBASE SYNC ATTEMPT ---
+                const referredBy = localStorage.getItem('cty_referrer');
+                const hasBeenReferred = localStorage.getItem('cty_referral_processed');
+
+                let welcomeMsg = "Identity Verified. Protocol Access Granted.";
+                let welcomeTitle = "WELCOME NEW WEB4 CITIZEN";
+
+                if (referredBy && !hasBeenReferred && referredBy !== uid) {
+                    try {
+                        const { doc, updateDoc, increment, setDoc, getDoc } = window.firestoreFunctions;
+                        
+                        await setDoc(doc(window.db, "users", uid), {
+                            wallet: walletAddress, // Save real address if available
+                            joined: new Date(),
+                            referredBy: referredBy,
+                            type: isRealConnection ? "Verified Wallet" : "Simulation"
+                        }, { merge: true });
+
+                        const referrerRef = doc(window.db, "users", referredBy);
+                        await updateDoc(referrerRef, {
+                            inviteCount: increment(1),
+                            ctyBalance: increment(5)
+                        });
+
+                        localStorage.setItem('cty_referral_processed', 'true');
+                        
+                        welcomeTitle = "REFERRAL LINKED";
+                        welcomeMsg = `Connected via Invite Code: ${referredBy}. <br><span style="color:#9bf364">5 CTY Bonus Applied to Referrer.</span>`;
+                    } catch (error) {
+                        console.warn("Firebase Sync Error (Expected if rules not set):", error);
+                        welcomeMsg = `Connected via Invite Code: ${referredBy}. <br>(Database Sync Simulation Active)`;
+                    }
+                }
+
+                // Show Modal
+                document.getElementById('modal-title').innerText = welcomeTitle;
+                document.getElementById('modal-msg').innerHTML = welcomeMsg;
+                document.getElementById('welcome-modal').style.display = 'flex';
+                
+                // Scroll
+                document.getElementById('mining-area').scrollIntoView({behavior: "smooth"});
+
+            }, 1000);
         }
 
-        // HANDLE SUCCESSFUL CONNECTION (Common for both)
-        function handleConnectionSuccess(address) {
-            closeWalletModal();
+        function closeModal() { document.getElementById('welcome-modal').style.display = 'none'; }
 
-            // 1. Shorten Address for Display
-            const shortAddr = address.substring(0, 6) + "..." + address.substring(address.length - 4);
-            
-            // 2. Update Button
-            const btn = document.querySelector('.connect-btn');
-            btn.innerText = shortAddr;
-            btn.style.borderColor = "#9bf364";
-            btn.style.color = "#9bf364";
-
-            // 3. Generate and Show Unique Web4 UID
-            let uid = localStorage.getItem('web4_uid');
-            if(!uid) {
-                const p1 = Math.floor(100 + Math.random() * 900);
-                const p2 = Math.floor(100 + Math.random() * 900);
-                uid = `WEB4-${p1}-${p2}`;
-                localStorage.setItem('web4_uid', uid);
-            }
-            const uidEl = document.getElementById('user-uid');
-            uidEl.innerText = uid;
-            uidEl.style.display = 'block';
-
-            // 4. Activate Glowing Blockchain Light
-            document.getElementById('status-light').style.display = 'block';
-
-            // 5. UNLOCK MINING AREA
-            document.getElementById('mining-placeholder').style.display = 'none';
-            const miningSec = document.getElementById('mining-area');
-            miningSec.classList.add('visible');
-            
-            // 6. UNLOCK HYBRID REFERRAL AREA
-            document.getElementById('ref-locked').style.display = 'none';
-            document.getElementById('ref-unlocked').style.display = 'block';
-            document.getElementById('ref-link-text').innerText = `https://Sci-fi-Cryptinity-Web4.io/invites/${uid}?addr=${address.substring(0,8)}`;
-
-            // 7. Scroll to Mining Section
-            miningSec.scrollIntoView({behavior: "smooth"});
-
-            // 8. SHOW WELCOME POP UP
-            document.getElementById('welcome-modal').style.display = 'flex';
-        }
-
-        // --- 5. WITHDRAWAL LOGIC ---
-        function processWithdrawal() {
-            const inputs = document.querySelectorAll('.w-input');
-            const addr = inputs[0].value;
-            const amt = inputs[1].value;
-
-            if(addr.length < 10) { alert("Invalid Wallet Address."); return; }
-            if(amt < 50) { alert("Minimum withdrawal is 50 CTY."); return; }
-            
-            alert(`Initiating transfer of ${amt} CTY to ${addr.substring(0,8)}... \n\nRequest queued for Token Generation Event (TGE).`);
-            inputs[0].value = "";
-            inputs[1].value = "";
-        }
-
-        // --- 6. COPY REFERRAL LOGIC ---
+        // --- 6. COPY LOGIC ---
         function copyReferral() {
-            // Get text from the new Hybrid box
             const text = document.getElementById('ref-link-text').innerText;
-            copyReferralFallback(text);
-        }
-
-        function copyReferralFallback(text) {
             const textArea = document.createElement("textarea");
             textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "0";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
+            textArea.style.position = "fixed"; textArea.style.left = "-9999px"; textArea.style.top = "0";
+            document.body.appendChild(textArea); textArea.focus(); textArea.select();
             
-            try {
-                const successful = document.execCommand('copy');
-                if (successful) showCopiedMsg();
-                else alert("Please manually copy the link: " + text);
-            } catch (err) {
-                alert("Please manually copy the link: " + text);
-            }
-            
+            try { document.execCommand('copy'); showCopiedMsg(); } 
+            catch (err) { alert("Copy failed: " + text); }
             document.body.removeChild(textArea);
         }
 
         function showCopiedMsg() {
             const msg = document.getElementById('ref-msg');
-            msg.style.opacity = '1';
-            setTimeout(() => { msg.style.opacity = '0'; }, 2000);
+            msg.style.opacity = '1'; setTimeout(() => { msg.style.opacity = '0'; }, 2000);
         }
 
-        // --- 7. AI CHAT ---
-        function toggleChat() {
-            const win = document.getElementById('chat-window');
-            win.style.display = (win.style.display === 'flex') ? 'none' : 'flex';
+        // --- 7. OTHER UTILS ---
+        let launchDate = localStorage.getItem('cty_launch_date');
+        if (!launchDate) {
+            const target = new Date(); target.setDate(target.getDate() + 90);
+            launchDate = target.getTime(); localStorage.setItem('cty_launch_date', launchDate);
         }
+        setInterval(() => {
+            const now = new Date().getTime(); const dist = launchDate - now;
+            const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+            const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((dist % (1000 * 60)) / 1000);
+            document.getElementById("countdown").innerHTML = `<div class="time-box"><div class="time-val">${d}</div><div class="time-lbl">DAYS</div></div><div class="time-box"><div class="time-val">${h}</div><div class="time-lbl">HRS</div></div><div class="time-box"><div class="time-val">${m}</div><div class="time-lbl">MIN</div></div><div class="time-box"><div class="time-val">${s}</div><div class="time-lbl">SEC</div></div>`;
+        }, 1000);
 
-        function handleEnter(e) { if (e.key === 'Enter') sendMessage(); }
-
+        function processWithdrawal() { alert("Request queued for Token Generation Event (TGE)."); }
+        function toggleChat() { const w = document.getElementById('chat-window'); w.style.display = w.style.display==='flex'?'none':'flex'; }
+        function handleEnter(e) { if(e.key==='Enter') sendMessage(); }
         function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const body = document.getElementById('chat-body');
-            const text = input.value.trim();
-            if (text === "") return;
-
-            body.innerHTML += `<div class="msg user">${text}</div>`;
-            input.value = "";
-            body.scrollTop = body.scrollHeight;
-
-            setTimeout(() => {
-                let reply = "Calculating trajectory... Check the White Paper.";
-                const lower = text.toLowerCase();
-                if (lower.includes("hello")) reply = "Systems online. Welcome to Cryptinity.";
-                else if (lower.includes("cty")) reply = "CTY is the native fuel of Web4. Supply: 1B.";
-                else if (lower.includes("mining")) reply = "Cloud mining active at 145 TH/s.";
-                else if (lower.includes("safe") || lower.includes("referral")) reply = "Earn 5 CTY per invite. Share your link.";
-                else if (lower.includes("withdraw")) reply = "Minimum withdrawal: 50 CTY. Connect wallet to access.";
-                
-                body.innerHTML += `<div class="msg bot">${reply}</div>`;
-                body.scrollTop = body.scrollHeight;
-            }, 800);
+            const i = document.getElementById('chat-input'); const b = document.getElementById('chat-body');
+            const t = i.value.trim(); if(t==="") return;
+            b.innerHTML+=`<div class="msg user">${t}</div>`; i.value=""; b.scrollTop=b.scrollHeight;
+            setTimeout(()=>{ b.innerHTML+=`<div class="msg bot">Command received. Processing...</div>`; b.scrollTop=b.scrollHeight; },800);
         }
     </script>
 </body>
 </html>
+
