@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,12 +9,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-      import { getFirestore, doc, updateDoc, increment, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getFirestore, doc, updateDoc, increment, setDoc, getDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyALkLkbBr2SCxLyon970oyoBr2hmfFu0kE",
@@ -26,9 +26,11 @@
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
+      
+      // Expose to window for the main script
       window.db = db; 
-      window.firestoreFunctions = { doc, updateDoc, increment, setDoc, getDoc };
-      console.log("Cryptinity Web4 Network: SECURE");
+      window.fs = { doc, updateDoc, increment, setDoc, getDoc, onSnapshot, serverTimestamp };
+      console.log("Cryptinity Web4 Network: LIVE SYNC ACTIVE");
     </script>
 
     <style>
@@ -81,7 +83,14 @@
             pointer-events: none;
         }
         .intro-active { display: flex !important; animation: fadeOut 2s ease-in-out 3s forwards; }
-        #intro-logo { width: 250px; opacity: 0; animation: logoReveal 2s ease-out 0.5s forwards; filter: drop-shadow(0 0 30px var(--neon-green)); }
+        
+        #intro-logo { 
+            width: 250px; 
+            opacity: 0; 
+            animation: logoReveal 2s ease-out 0.5s forwards; 
+            filter: drop-shadow(0 0 30px var(--neon-green));
+        }
+        
         #intro-text { margin-top: 20px; font-size: 2rem; color: var(--neon-teal); letter-spacing: 5px; opacity: 0; font-family: 'Orbitron'; animation: textReveal 1s ease-out 1.5s forwards; }
         @keyframes logoReveal { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         @keyframes textReveal { 0% { letter-spacing: 15px; opacity: 0; } 100% { letter-spacing: 5px; opacity: 1; } }
@@ -116,8 +125,15 @@
             border-bottom: 1px solid var(--dark-green); z-index: 100;
             box-shadow: 0 0 20px rgba(14, 96, 17, 0.3);
         }
-        .brand { display: flex; align-items: center; gap: 10px; }
-        .brand img { height: 50px; filter: drop-shadow(0 0 5px var(--neon-green)); }
+        .brand { display: flex; align-items: center; gap: 15px; }
+        
+        .header-logo-img {
+            height: 50px;
+            filter: drop-shadow(0 0 5px var(--neon-green));
+            transition: transform 0.3s;
+        }
+        .header-logo-img:hover { transform: scale(1.1); }
+
         .brand h1 { font-size: 1.2rem; background: linear-gradient(90deg, var(--neon-green), var(--neon-teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .login-wrapper { display: flex; align-items: center; gap: 15px; }
         .uid-badge {
@@ -330,7 +346,7 @@
     </div>
 
     <div id="intro-overlay">
-        <img src="https://img.sanishtech.com/u/79b9b77165086fdfbe6eec130c65fa76.png" id="intro-logo" alt="Cryptinity Logo" onerror="this.src='https://img.icons8.com/nolan/200/future.png'">
+        <img src="https://res.cloudinary.com/dpiypv2r5/image/upload/v1764821309/9214-removebg-preview_bh4qxo.png" id="intro-logo" alt="Cryptinity Logo">
         <div id="intro-text">WELCOME TO SAFE ZONE</div>
     </div>
 
@@ -344,7 +360,7 @@
 
     <header>
         <div class="brand">
-            <img src="https://img.sanishtech.com/u/79b9b77165086fdfbe6eec130c65fa76.png" alt="CTY Logo" onerror="this.src='https://img.icons8.com/nolan/64/future.png'">
+            <img src="https://res.cloudinary.com/dpiypv2r5/image/upload/v1764821309/9214-removebg-preview_bh4qxo.png" class="header-logo-img" alt="CTY Logo">
             <h1>CRYPTINITY WEB4</h1>
         </div>
         <div class="login-wrapper">
@@ -453,49 +469,55 @@
     </footer>
 
     <script>
-        // --- 0. STARTUP LOGIC: CAPTURE REFERRAL & DETECT WALLET ---
-        let detectedWalletType = null; // 'solana' or 'ethereum' or null
+        // --- VARIABLES ---
+        let detectedWalletType = null; 
+        let currentBalance = 0.00000000;
+        let userUID = null;
+        let miningInterval = null;
+        let saveInterval = null;
+        const MINING_RATE = 0.00000145; 
 
+        // --- 1. INITIALIZATION ---
         window.onload = function() {
-            // Check for ?ref= in the URL
+            // Check for ?ref= in URL
             const urlParams = new URLSearchParams(window.location.search);
             const refID = urlParams.get('ref');
-            
             if (refID) {
                 console.log("Referred by:", refID);
                 localStorage.setItem('cty_referrer', refID);
             }
 
-            // --- AUTO DETECT WALLET INSTALLED ---
+            // Wallet Detection
             setTimeout(() => {
                 const btn = document.getElementById('connect-btn');
-                
-                // Check Solana (Phantom)
                 if (window.solana && window.solana.isPhantom) {
                     detectedWalletType = 'solana';
-                    console.log("System: Phantom Wallet Detected");
                     btn.innerText = "PHANTOM DETECTED";
                     btn.style.borderColor = "var(--neon-teal)";
-                } 
-                // Check Ethereum (MetaMask)
-                else if (window.ethereum) {
+                } else if (window.ethereum) {
                     detectedWalletType = 'ethereum';
-                    console.log("System: MetaMask Detected");
                     btn.innerText = "METAMASK DETECTED";
                     btn.style.borderColor = "orange";
                     btn.style.color = "orange";
                 }
-                else {
-                    console.log("System: No Wallet Detected (Using Simulation Mode)");
-                }
             }, 1000);
+
+            // Auto-Connect if previously connected
+            const savedUID = localStorage.getItem('web4_uid');
+            if(savedUID) {
+                userUID = savedUID;
+                // We don't auto-unlock UI until user clicks "Connect" again for security/effect,
+                // but we could. For now, let's keep the manual feel.
+            }
+            
+            startCountdown();
+            animateGlobalStats();
         };
 
-        // --- 1. ENTER SYSTEM ---
+        // --- 2. ENTER SYSTEM ---
         function enterSite() {
             document.getElementById('start-overlay').style.display = 'none';
-            const intro = document.getElementById('intro-overlay');
-            intro.classList.add('intro-active');
+            document.getElementById('intro-overlay').classList.add('intro-active');
             
             const audio = document.getElementById('theme-song');
             audio.volume = 0.6; 
@@ -504,198 +526,220 @@
             }).catch(e => console.log("Audio blocked"));
         }
 
-        // --- 2. AUDIO TOGGLE ---
-        function toggleMute() {
-            const audio = document.getElementById('theme-song');
-            const icon = document.getElementById('audio-icon');
-            const btn = document.getElementById('audio-control');
-            if (audio.muted) {
-                audio.muted = false; icon.classList.remove('fa-volume-mute'); icon.classList.add('fa-volume-up');
-                btn.style.borderColor = 'var(--neon-teal)'; btn.style.boxShadow = '0 0 10px var(--neon-teal)';
-            } else {
-                audio.muted = true; icon.classList.remove('fa-volume-up'); icon.classList.add('fa-volume-mute');
-                btn.style.borderColor = '#555'; btn.style.boxShadow = 'none';
-            }
-        }
-
-        // --- 3. PERSISTENT MEMBERS ---
-        const memberEl = document.getElementById('active-members');
-        let currentMembers = parseInt(localStorage.getItem('cty_members')) || 68923021;
-        function updateMembers() {
-            currentMembers += Math.floor(Math.random() * 5);
-            localStorage.setItem('cty_members', currentMembers);
-            memberEl.innerText = currentMembers.toLocaleString();
-        }
-        setInterval(updateMembers, 3000);
-        memberEl.innerText = currentMembers.toLocaleString();
-
-        // --- 4. MINING LOGIC ---
-        const minedEl = document.getElementById('mined-value');
-        let minedAmount = parseFloat(localStorage.getItem('cty_mined')) || 0.00000000;
-        let lastTime = parseInt(localStorage.getItem('cty_last_time')) || Date.now();
-        const miningRatePerMs = 0.00000145 / 100;
-        
-        // Sync offline mining
-        const diffTime = Date.now() - lastTime;
-        if(diffTime > 0) minedAmount += diffTime * miningRatePerMs;
-
-        function mineLoop() {
-            minedAmount += 0.00000145;
-            minedEl.innerText = minedAmount.toFixed(8);
-            localStorage.setItem('cty_mined', minedAmount);
-            localStorage.setItem('cty_last_time', Date.now());
-        }
-        setInterval(mineLoop, 100);
-
-        // --- 5. CONNECT WALLET (REAL + FALLBACK) ---
+        // --- 3. CONNECT WALLET & SYNC FIREBASE ---
         async function connectWallet() {
             const btn = document.getElementById('connect-btn');
             if(btn.innerText.includes("...")) return;
 
             btn.innerText = "INITIALIZING...";
+            let walletAddress = "0x89...2B4"; // Fallback
             
-            let walletAddress = "0x89...2B4"; // Default fake address for fallback
-            let isRealConnection = false;
-
-            // --- TRY REAL CONNECTION IF DETECTED ---
+            // A. WALLET CONNECTION
             try {
                 if (detectedWalletType === 'solana') {
-                    // Connect Phantom
                     const resp = await window.solana.connect();
-                    walletAddress = resp.publicKey.toString().substring(0, 6) + "..." + resp.publicKey.toString().slice(-4);
-                    isRealConnection = true;
-                } 
-                else if (detectedWalletType === 'ethereum') {
-                    // Connect MetaMask
+                    walletAddress = resp.publicKey.toString();
+                } else if (detectedWalletType === 'ethereum') {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    const addr = accounts[0];
-                    walletAddress = addr.substring(0, 6) + "..." + addr.slice(-4);
-                    isRealConnection = true;
+                    walletAddress = accounts[0];
+                } else {
+                    // Simulation mode for testing without wallet
+                    walletAddress = "SIM-" + Math.random().toString(36).substr(2, 9);
                 }
-            } catch (err) {
-                console.log("Wallet connection denied or failed. Falling back to Sim.");
-                // User rejected request, fallback to simulation so they aren't stuck
+            } catch (err) { console.log("Fallback to Sim"); }
+
+            // Shorten for UI
+            const shortWallet = walletAddress.substring(0, 6) + "..." + walletAddress.slice(-4);
+
+            // B. UID GENERATION (Persistent)
+            if (!userUID) {
+                userUID = walletAddress; // Use wallet as ID for simplicity
+                localStorage.setItem('web4_uid', userUID);
             }
 
-            // --- PROCEED WITH UI UNLOCK (SIMULATED DELAY FOR EFFECT) ---
-            setTimeout(async () => {
-                // UI Changes
-                btn.innerText = walletAddress;
-                btn.style.borderColor = "#9bf364"; 
-                btn.style.color = "#9bf364";
-                document.getElementById('status-light').style.display = 'block';
+            // C. FIREBASE SYNC (The "Ultra" Logic)
+            await syncUserWithFirebase(userUID, shortWallet);
+        }
+
+        async function syncUserWithFirebase(uid, displayWallet) {
+            const { doc, setDoc, getDoc, updateDoc, increment, onSnapshot, serverTimestamp } = window.fs;
+            const db = window.db;
+            const userRef = doc(db, "users", uid);
+
+            // 1. Create/Update User
+            try {
+                const docSnap = await getDoc(userRef);
                 
-                // Generate/Get UID
-                let uid = localStorage.getItem('web4_uid');
-                if(!uid) {
-                    const p1 = Math.floor(100 + Math.random() * 900);
-                    const p2 = Math.floor(100 + Math.random() * 900);
-                    uid = `WEB4-${p1}-${p2}`;
-                    localStorage.setItem('web4_uid', uid);
-                }
-                document.getElementById('user-uid').innerText = uid;
-                document.getElementById('user-uid').style.display = 'block';
+                if (!docSnap.exists()) {
+                    // NEW USER
+                    const referrer = localStorage.getItem('cty_referrer');
+                    await setDoc(userRef, {
+                        wallet: displayWallet,
+                        joined: serverTimestamp(),
+                        balance: 0.00,
+                        inviteCount: 0,
+                        earned: 0,
+                        referredBy: referrer || "system"
+                    });
 
-                // UNLOCK AREAS
-                document.getElementById('mining-placeholder').style.display = 'none';
-                document.getElementById('mining-area').classList.add('visible');
-                document.getElementById('ref-locked').style.display = 'none';
-                document.getElementById('ref-unlocked').style.display = 'block';
-                
-                // --- NEW URL WITH GITHUB DOMAIN ---
-                const baseUrl = "https://cryptinity.github.io/Sci-fi-Cryptinity-Web4/";
-                document.getElementById('ref-link-text').innerText = `${baseUrl}?ref=${uid}`;
-
-                // --- REAL FIREBASE SYNC ATTEMPT ---
-                const referredBy = localStorage.getItem('cty_referrer');
-                const hasBeenReferred = localStorage.getItem('cty_referral_processed');
-
-                let welcomeMsg = "Identity Verified. Protocol Access Granted.";
-                let welcomeTitle = "WELCOME NEW WEB4 CITIZEN";
-
-                if (referredBy && !hasBeenReferred && referredBy !== uid) {
-                    try {
-                        const { doc, updateDoc, increment, setDoc, getDoc } = window.firestoreFunctions;
-                        
-                        await setDoc(doc(window.db, "users", uid), {
-                            wallet: walletAddress, // Save real address if available
-                            joined: new Date(),
-                            referredBy: referredBy,
-                            type: isRealConnection ? "Verified Wallet" : "Simulation"
-                        }, { merge: true });
-
-                        const referrerRef = doc(window.db, "users", referredBy);
-                        await updateDoc(referrerRef, {
+                    // Credit Referrer
+                    if(referrer && referrer !== uid) {
+                        const refDoc = doc(db, "users", referrer);
+                        updateDoc(refDoc, {
                             inviteCount: increment(1),
-                            ctyBalance: increment(5)
-                        });
+                            earned: increment(5),
+                            balance: increment(5)
+                        }).catch(e=>console.log("Ref update failed"));
+                    }
+                    showModal("WELCOME NEW CITIZEN", "Identity Verified. Protocol Access Granted.");
+                } else {
+                    // RETURNING USER
+                    const data = docSnap.data();
+                    currentBalance = data.balance || 0;
+                    showModal("WELCOME BACK", "Wallet Synced. Mining Resumed.");
+                }
+            } catch(e) {
+                console.warn("Firestore Rules/Net Error - Running in Offline Mode");
+                showModal("OFFLINE MODE", "Database unreachable. Mining locally.");
+            }
 
-                        localStorage.setItem('cty_referral_processed', 'true');
-                        
-                        welcomeTitle = "REFERRAL LINKED";
-                        welcomeMsg = `Connected via Invite Code: ${referredBy}. <br><span style="color:#9bf364">5 CTY Bonus Applied to Referrer.</span>`;
-                    } catch (error) {
-                        console.warn("Firebase Sync Error (Expected if rules not set):", error);
-                        welcomeMsg = `Connected via Invite Code: ${referredBy}. <br>(Database Sync Simulation Active)`;
+            // 2. Setup Real-Time Listener (Updates UI instantly)
+            onSnapshot(userRef, (doc) => {
+                if(doc.exists()) {
+                    const data = doc.data();
+                    // Update Referral Stats
+                    document.getElementById('ref-count').innerText = data.inviteCount || 0;
+                    document.getElementById('ref-earned').innerText = (data.earned || 0).toFixed(2) + " CTY";
+                    
+                    // Sync Balance (Only if significantly different to avoid jitter)
+                    if (Math.abs(data.balance - currentBalance) > 1.0) {
+                        currentBalance = data.balance;
                     }
                 }
+            });
 
-                // Show Modal
-                document.getElementById('modal-title').innerText = welcomeTitle;
-                document.getElementById('modal-msg').innerHTML = welcomeMsg;
-                document.getElementById('welcome-modal').style.display = 'flex';
-                
-                // Scroll
-                document.getElementById('mining-area').scrollIntoView({behavior: "smooth"});
+            // 3. Update UI Elements
+            const btn = document.getElementById('connect-btn');
+            btn.innerText = displayWallet;
+            btn.style.borderColor = "#9bf364"; 
+            btn.style.color = "#9bf364";
+            
+            document.getElementById('status-light').style.display = 'block';
+            document.getElementById('user-uid').innerText = "ID: " + uid.substring(0,8);
+            document.getElementById('user-uid').style.display = 'block';
 
+            // Unlock Areas
+            document.getElementById('mining-placeholder').style.display = 'none';
+            document.getElementById('mining-area').classList.add('visible');
+            document.getElementById('ref-locked').style.display = 'none';
+            document.getElementById('ref-unlocked').style.display = 'block';
+
+            // Generate Link
+            const baseUrl = window.location.href.split('?')[0];
+            document.getElementById('ref-link-text').innerText = `${baseUrl}?ref=${uid}`;
+
+            // Start Mining
+            startMiningLoop(uid);
+            
+            // Scroll to mining
+            document.getElementById('mining-area').scrollIntoView({behavior: "smooth"});
+        }
+
+        // --- 4. MINING LOOP & AUTO-SAVE ---
+        function startMiningLoop(uid) {
+            const minedEl = document.getElementById('mined-value');
+            
+            // Clear existing
+            if(miningInterval) clearInterval(miningInterval);
+            if(saveInterval) clearInterval(saveInterval);
+
+            // Visual Loop (Fast)
+            miningInterval = setInterval(() => {
+                currentBalance += MINING_RATE;
+                minedEl.innerText = currentBalance.toFixed(8);
+            }, 100);
+
+            // Save Loop (Slow - Every 10s)
+            saveInterval = setInterval(() => {
+                const { doc, updateDoc } = window.fs;
+                const db = window.db;
+                const userRef = doc(db, "users", uid);
+                updateDoc(userRef, {
+                    balance: currentBalance,
+                    lastMined: Date.now()
+                }).catch(e=>console.log("Auto-save silent fail"));
+            }, 10000);
+        }
+
+        // --- 5. HELPERS ---
+        function showModal(title, msg) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-msg').innerText = msg;
+            document.getElementById('welcome-modal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('welcome-modal').style.display = 'none'; }
+        
+        function copyReferral() {
+            const text = document.getElementById('ref-link-text').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const msg = document.getElementById('ref-msg');
+                msg.style.opacity = '1'; setTimeout(() => { msg.style.opacity = '0'; }, 2000);
+            });
+        }
+
+        function toggleMute() {
+            const audio = document.getElementById('theme-song');
+            const icon = document.getElementById('audio-icon');
+            if (audio.muted) {
+                audio.muted = false; icon.classList.replace('fa-volume-mute', 'fa-volume-up');
+            } else {
+                audio.muted = true; icon.classList.replace('fa-volume-up', 'fa-volume-mute');
+            }
+        }
+
+        // Countdown
+        function startCountdown() {
+            // Set for 60 days out
+            let end = localStorage.getItem('cty_launch');
+            if(!end) {
+                const d = new Date(); d.setDate(d.getDate()+60);
+                end = d.getTime(); localStorage.setItem('cty_launch', end);
+            }
+            setInterval(() => {
+                const now = new Date().getTime(); const dist = end - now;
+                const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+                const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((dist % (1000 * 60)) / 1000);
+                document.getElementById("countdown").innerHTML = `<div class="time-box"><div class="time-val">${d}</div><div class="time-lbl">DAYS</div></div><div class="time-box"><div class="time-val">${h}</div><div class="time-lbl">HRS</div></div><div class="time-box"><div class="time-val">${m}</div><div class="time-lbl">MIN</div></div><div class="time-box"><div class="time-val">${s}</div><div class="time-lbl">SEC</div></div>`;
             }, 1000);
         }
 
-        function closeModal() { document.getElementById('welcome-modal').style.display = 'none'; }
-
-        // --- 6. COPY LOGIC ---
-        function copyReferral() {
-            const text = document.getElementById('ref-link-text').innerText;
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed"; textArea.style.left = "-9999px"; textArea.style.top = "0";
-            document.body.appendChild(textArea); textArea.focus(); textArea.select();
-            
-            try { document.execCommand('copy'); showCopiedMsg(); } 
-            catch (err) { alert("Copy failed: " + text); }
-            document.body.removeChild(textArea);
+        function animateGlobalStats() {
+            const el = document.getElementById('active-members');
+            let val = 68923021;
+            setInterval(() => { val += Math.floor(Math.random()*5); el.innerText = val.toLocaleString(); }, 2000);
         }
 
-        function showCopiedMsg() {
-            const msg = document.getElementById('ref-msg');
-            msg.style.opacity = '1'; setTimeout(() => { msg.style.opacity = '0'; }, 2000);
-        }
-
-        // --- 7. OTHER UTILS ---
-        let launchDate = localStorage.getItem('cty_launch_date');
-        if (!launchDate) {
-            const target = new Date(); target.setDate(target.getDate() + 90);
-            launchDate = target.getTime(); localStorage.setItem('cty_launch_date', launchDate);
-        }
-        setInterval(() => {
-            const now = new Date().getTime(); const dist = launchDate - now;
-            const d = Math.floor(dist / (1000 * 60 * 60 * 24));
-            const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
-            const s = Math.floor((dist % (1000 * 60)) / 1000);
-            document.getElementById("countdown").innerHTML = `<div class="time-box"><div class="time-val">${d}</div><div class="time-lbl">DAYS</div></div><div class="time-box"><div class="time-val">${h}</div><div class="time-lbl">HRS</div></div><div class="time-box"><div class="time-val">${m}</div><div class="time-lbl">MIN</div></div><div class="time-box"><div class="time-val">${s}</div><div class="time-lbl">SEC</div></div>`;
-        }, 1000);
-
-        function processWithdrawal() { alert("Request queued for Token Generation Event (TGE)."); }
+        // --- 6. CHATBOT ---
         function toggleChat() { const w = document.getElementById('chat-window'); w.style.display = w.style.display==='flex'?'none':'flex'; }
         function handleEnter(e) { if(e.key==='Enter') sendMessage(); }
         function sendMessage() {
             const i = document.getElementById('chat-input'); const b = document.getElementById('chat-body');
             const t = i.value.trim(); if(t==="") return;
             b.innerHTML+=`<div class="msg user">${t}</div>`; i.value=""; b.scrollTop=b.scrollHeight;
-            setTimeout(()=>{ b.innerHTML+=`<div class="msg bot">Command received. Processing...</div>`; b.scrollTop=b.scrollHeight; },800);
+            setTimeout(()=>{ b.innerHTML+=`<div class="msg bot">Processed. Token metrics are stable.</div>`; b.scrollTop=b.scrollHeight; },800);
         }
+
+        function processWithdrawal() { alert("Request queued for TGE distribution."); }
+
+        // Save on exit
+        window.addEventListener("beforeunload", () => {
+            if(userUID && currentBalance > 0) {
+                 const { doc, updateDoc } = window.fs;
+                 updateDoc(doc(window.db, "users", userUID), { balance: currentBalance, lastMined: Date.now() });
+            }
+        });
     </script>
 </body>
 </html>
-
