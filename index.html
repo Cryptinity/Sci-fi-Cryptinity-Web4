@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -487,27 +486,10 @@
                 localStorage.setItem('cty_referrer', refID);
             }
 
-            // Wallet Detection
-            setTimeout(() => {
-                const btn = document.getElementById('connect-btn');
-                if (window.solana && window.solana.isPhantom) {
-                    detectedWalletType = 'solana';
-                    btn.innerText = "PHANTOM DETECTED";
-                    btn.style.borderColor = "var(--neon-teal)";
-                } else if (window.ethereum) {
-                    detectedWalletType = 'ethereum';
-                    btn.innerText = "METAMASK DETECTED";
-                    btn.style.borderColor = "orange";
-                    btn.style.color = "orange";
-                }
-            }, 1000);
-
             // Auto-Connect if previously connected
             const savedUID = localStorage.getItem('web4_uid');
             if(savedUID) {
                 userUID = savedUID;
-                // We don't auto-unlock UI until user clicks "Connect" again for security/effect,
-                // but we could. For now, let's keep the manual feel.
             }
             
             startCountdown();
@@ -526,39 +508,68 @@
             }).catch(e => console.log("Audio blocked"));
         }
 
-        // --- 3. CONNECT WALLET & SYNC FIREBASE ---
+        // --- 3. CONNECT WALLET (MOBILE DEEP LINK VERSION) ---
         async function connectWallet() {
             const btn = document.getElementById('connect-btn');
             if(btn.innerText.includes("...")) return;
 
-            btn.innerText = "INITIALIZING...";
-            let walletAddress = "0x89...2B4"; // Fallback
+            btn.innerText = "OPENING WALLET...";
             
-            // A. WALLET CONNECTION
+            // 1. Detect Environment
+            const isPhantomInstalled = window.solana && window.solana.isPhantom;
+            const isMetaMaskInstalled = window.ethereum && window.ethereum.isMetaMask;
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+            let walletAddress = null;
+
             try {
-                if (detectedWalletType === 'solana') {
+                // 2. Desktop or In-App Browser Logic
+                if (isPhantomInstalled) {
                     const resp = await window.solana.connect();
                     walletAddress = resp.publicKey.toString();
-                } else if (detectedWalletType === 'ethereum') {
+                    detectedWalletType = 'solana';
+                } 
+                else if (isMetaMaskInstalled) {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                     walletAddress = accounts[0];
-                } else {
-                    // Simulation mode for testing without wallet
-                    walletAddress = "SIM-" + Math.random().toString(36).substr(2, 9);
+                    detectedWalletType = 'ethereum';
+                } 
+                // 3. Mobile Browser Logic (Deep Linking)
+                else if (isMobile) {
+                    // This forces the Phantom App to open your website
+                    const currentUrl = encodeURIComponent(window.location.href);
+                    const ref = encodeURIComponent(window.location.host);
+                    
+                    // Redirect to Phantom App
+                    window.location.href = `https://phantom.app/ul/browse/${currentUrl}?ref=${ref}`;
+                    return; // Stop execution, app will open
                 }
-            } catch (err) { console.log("Fallback to Sim"); }
+                else {
+                    // 4. Desktop but no wallet installed
+                    alert("No wallet found! Please install Phantom or MetaMask.");
+                    btn.innerText = "CONNECT WALLET";
+                    return;
+                }
 
-            // Shorten for UI
-            const shortWallet = walletAddress.substring(0, 6) + "..." + walletAddress.slice(-4);
+                // --- SUCCESS: SYNC WITH DATABASE ---
+                if (walletAddress) {
+                    const shortWallet = walletAddress.substring(0, 6) + "..." + walletAddress.slice(-4);
+                    
+                    // Generate or Retrieve UID
+                    if (!userUID) {
+                        userUID = walletAddress; 
+                        localStorage.setItem('web4_uid', userUID);
+                    }
 
-            // B. UID GENERATION (Persistent)
-            if (!userUID) {
-                userUID = walletAddress; // Use wallet as ID for simplicity
-                localStorage.setItem('web4_uid', userUID);
+                    // Execute the Firebase Sync (The "Ultra" Logic)
+                    await syncUserWithFirebase(userUID, shortWallet);
+                }
+
+            } catch (err) {
+                console.error("Connection Error:", err);
+                btn.innerText = "TRY AGAIN";
+                alert("Connection cancelled or failed.");
             }
-
-            // C. FIREBASE SYNC (The "Ultra" Logic)
-            await syncUserWithFirebase(userUID, shortWallet);
         }
 
         async function syncUserWithFirebase(uid, displayWallet) {
